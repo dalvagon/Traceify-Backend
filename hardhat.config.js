@@ -8,6 +8,11 @@ module.exports = {
       url: process.env.INFURA_URL,
       accounts: [process.env.PRIVATE_KEY]
     }
+  },
+  coverage: {
+    solc: {
+      version: "0.8.18",
+    }
   }
 };
 

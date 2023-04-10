@@ -13,11 +13,14 @@
     "@nomicfoundation/hardhat-chai-matchers": "^1.0.6",
     "@nomicfoundation/hardhat-toolbox": "^1.0.2",
     "@nomiclabs/hardhat-ethers": "^2.2.2",
+    "@openzeppelin/test-helpers": "^0.5.16",
     "chai": "^4.3.7",
     "ethers": "^5.7.2",
     "hardhat": "^2.13.0"
   },
   "dependencies": {
-    "dotenv": "^16.0.3"
+    "@openzeppelin/contracts": "^4.8.2",
+    "dotenv": "^16.0.3",
+    "solidity-coverage": "^0.8.2"
   }
 }
