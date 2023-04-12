@@ -5,10 +5,9 @@ const deploy = async () => {
     console.log("Deploying contracts with the account:", deployer.address);
     console.log("Account balance:", accountBalance.toString());
 
-    const contractFactory = await hre.ethers.getContractFactory("Version");
+    const contractFactory = await hre.ethers.getContractFactory("ProductHistory");
     const contract = await contractFactory.deploy();
     await contract.deployed();
-
     console.log("Contract deployed to:", contract.address);
 };
 
