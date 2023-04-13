@@ -17,6 +17,22 @@ describe("Product history contract", function () {
         return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
     }
 
+    function getManagerRequest() {
+        const name = "John Doe";
+        const email = "john.doe@gmail.com";
+        const company = "Company Inc.";
+        const purpose = "To manage products";
+
+        return { name, email, company, purpose };
+    }
+
+    async function addManager(address, contract) {
+        const { name, email, company, purpose } = getManagerRequest();
+
+        await contract.connect(address).submitManagerRequest(name, email, company, purpose);
+        await contract.approveManagerRequest(address.address);
+    }
+
     function getProduct() {
         const bardcode = ethers.utils.formatBytes32String("123456789");
         const informationHash = "0x017dfd85d4f6cb4dcd715a88101f7b1f06cd1e009b2327a0809d01eb9c91f231";
@@ -40,10 +56,12 @@ describe("Product history contract", function () {
         };
     }
 
-    it("Only owner should be able to add new managers", async function () {
+    it("Only owner should be able to approve manager requests", async function () {
         const { productHistoryContract, addr1, addr2 } = await loadFixture(deployProductHistoryFixture);
 
-        await expect(productHistoryContract.connect(addr1).addManager(addr2.address)).to.be.reverted;
+        const res = productHistoryContract.connect(addr1).approveManagerRequest(addr2.address);
+
+        await expect(res).to.be.reverted;
     });
 
     it("User that is not manager should not be able to add new products", async function () {
@@ -58,16 +76,16 @@ describe("Product history contract", function () {
     it("Manager should not be able to create product with existing barcode", async function () {
         const { productHistoryContract, addr1 } = await loadFixture(deployProductHistoryFixture);
         const { bardcode, informationHash } = getProduct();
-
-        await productHistoryContract.addManager(addr1.address);
+        await addManager(addr1, productHistoryContract);
         await productHistoryContract.connect(addr1).addProduct(bardcode, informationHash, []);
+
         const res = productHistoryContract.connect(addr1).addProduct(bardcode, informationHash, []);
 
         await expect(res).to.be.revertedWith("Product with this barcode already exists");
     });
 
     it("User that is not manager should not be able to update products", async function () {
-        const { productHistoryContract, addr1 } = await loadFixture(deployProductHistoryFixture);
+        const { productHistoryContract } = await loadFixture(deployProductHistoryFixture);
         const { bardcode, informationHash } = getProduct();
 
         const res = productHistoryContract.updateProduct(bardcode, informationHash, getRandomDate().getTime());
@@ -78,8 +96,8 @@ describe("Product history contract", function () {
     it("Manager should not be able to update product with non-existing barcode", async function () {
         const { productHistoryContract, addr1 } = await loadFixture(deployProductHistoryFixture);
         const { bardcode, informationHash } = getProduct();
+        await addManager(addr1, productHistoryContract);
 
-        await productHistoryContract.addManager(addr1.address);
         const res = productHistoryContract.connect(addr1).updateProduct(bardcode, informationHash, getRandomDate().getTime());
 
         await expect(res).to.be.revertedWith("Product with this barcode does not exist");
@@ -90,11 +108,11 @@ describe("Product history contract", function () {
         const { bardcode, informationHash, productOperations } = getProduct();
         const op1 = productOperations[0];
         const op2 = productOperations[1];
-
-        await productHistoryContract.addManager(addr1.address);
+        await addManager(addr1, productHistoryContract);
         await productHistoryContract.connect(addr1).addProduct(bardcode, informationHash, []);
         await productHistoryContract.connect(addr1).updateProduct(bardcode, op1.informationHash, op1.timestamp);
         await productHistoryContract.connect(addr1).updateProduct(bardcode, op2.informationHash, op2.timestamp);
+
         const [retInformationHash, retParentBarcodes, retProductOperations] = await productHistoryContract.getProduct(bardcode);
 
         expect(retInformationHash).to.equal(informationHash);
@@ -110,13 +128,140 @@ describe("Product history contract", function () {
         const { bardcode, informationHash, productOperations } = getProduct();
         const op1 = productOperations[0];
         const op2 = productOperations[1];
-
-        await productHistoryContract.addManager(addr1.address);
-        await productHistoryContract.addManager(addr2.address);
+        await addManager(addr1, productHistoryContract);
+        await addManager(addr2, productHistoryContract);
         await productHistoryContract.connect(addr1).addProduct(bardcode, informationHash, []);
         await productHistoryContract.connect(addr1).updateProduct(bardcode, op1.informationHash, op1.timestamp);
+
         const res = productHistoryContract.connect(addr2).updateProduct(bardcode, op2.informationHash, op2.timestamp);
 
         await expect(res).to.be.revertedWith("User is not manager of this product");
+    });
+
+    it("Should not be able to create product with parent barcode that does not exist", async function () {
+        const { productHistoryContract, addr1 } = await loadFixture(deployProductHistoryFixture);
+        const { bardcode, informationHash, parentBarcodes } = getProduct();
+        await addManager(addr1, productHistoryContract);
+
+        const res = productHistoryContract.connect(addr1).addProduct(bardcode, informationHash, parentBarcodes);
+
+        await expect(res).to.be.revertedWith("Parent product with this barcode does not exist");
+    });
+
+    it("Users should not be able to submit manager requests more than once", async function () {
+        const { productHistoryContract, addr1 } = await loadFixture(deployProductHistoryFixture);
+        const { name, email, company, purpose } = getManagerRequest();
+
+        await productHistoryContract.submitManagerRequest(name, email, company, purpose);
+        const res = productHistoryContract.submitManagerRequest(name, email, company, purpose);
+
+        await expect(res).to.be.revertedWith("Manager request already submitted");
+    });
+
+    it("Admin should not be able to approve manager request that does not exist", async function () {
+        const { productHistoryContract, addr1 } = await loadFixture(deployProductHistoryFixture);
+
+        const res = productHistoryContract.approveManagerRequest(addr1.address);
+
+        await expect(res).to.be.revertedWith("Manager request does not exist");
+    });
+
+    it("Admin should not be able to deny manager request that does not exist", async function () {
+        const { productHistoryContract, addr1 } = await loadFixture(deployProductHistoryFixture);
+
+        const res = productHistoryContract.denyManagerRequest(addr1.address);
+
+        await expect(res).to.be.revertedWith("Manager request does not exist");
+    });
+
+    it("Admin should be able to approve manager request", async function () {
+        const { productHistoryContract, addr1 } = await loadFixture(deployProductHistoryFixture);
+        const { name, email, company, purpose } = getManagerRequest();
+        await productHistoryContract.connect(addr1).submitManagerRequest(name, email, company, purpose);
+        await productHistoryContract.approveManagerRequest(addr1.address);
+
+        const res = await productHistoryContract.hasRole(productHistoryContract.MANAGER_ROLE(), addr1.address);
+
+        expect(res).to.be.true;
+    });
+
+    it("Admin should be able to deny manager request", async function () {
+        const { productHistoryContract, addr1 } = await loadFixture(deployProductHistoryFixture);
+        const { name, email, company, purpose } = getManagerRequest();
+        await productHistoryContract.connect(addr1).submitManagerRequest(name, email, company, purpose);
+        await productHistoryContract.denyManagerRequest(addr1.address);
+
+        const res = await productHistoryContract.hasRole(productHistoryContract.MANAGER_ROLE(), addr1.address);
+
+        expect(res).to.be.false;
+    });
+
+    it("Admin should not be able to approve manager request that is already approved", async function () {
+        const { productHistoryContract, addr1 } = await loadFixture(deployProductHistoryFixture);
+        const { name, email, company, purpose } = getManagerRequest();
+        await productHistoryContract.connect(addr1).submitManagerRequest(name, email, company, purpose);
+        await productHistoryContract.approveManagerRequest(addr1.address);
+
+        const res = productHistoryContract.approveManagerRequest(addr1.address);
+
+        await expect(res).to.be.revertedWith("Account is already a manager");
+    });
+
+    it("Admin should be able to see a user's manager request", async function () {
+        const { productHistoryContract, addr1 } = await loadFixture(deployProductHistoryFixture);
+        const { name, email, company, purpose } = getManagerRequest();
+        await productHistoryContract.connect(addr1).submitManagerRequest(name, email, company, purpose);
+
+        const res = await productHistoryContract.getManagerRequest(addr1.address);
+
+        expect(res[0]).to.equal(name);
+        expect(res[1]).to.equal(email);
+        expect(res[2]).to.equal(company);
+        expect(res[3]).to.equal(purpose);
+    });
+
+    it("Admin should be able to see all manager requests", async function () {
+        const { productHistoryContract, addr1, addr2 } = await loadFixture(deployProductHistoryFixture);
+        const { name, email, company, purpose } = getManagerRequest();
+        await productHistoryContract.connect(addr1).submitManagerRequest(name, email, company, purpose);
+        await productHistoryContract.connect(addr2).submitManagerRequest(name, email, company, purpose);
+
+        const res = await productHistoryContract.getManagerRequestAddresses();
+
+        expect(res.length).to.equal(2);
+        expect(res[0]).to.equal(addr1.address);
+        expect(res[1]).to.equal(addr2.address);
+    });
+
+    it("Only admin should be able to see all manager requests", async function () {
+        const { productHistoryContract, addr1 } = await loadFixture(deployProductHistoryFixture);
+
+        const res = productHistoryContract.connect(addr1).getManagerRequestAddresses();
+
+        await expect(res).to.be.reverted;
+    });
+
+    it("Only admin should be able to see a user's manager request", async function () {
+        const { productHistoryContract, addr1 } = await loadFixture(deployProductHistoryFixture);
+
+        const res = productHistoryContract.connect(addr1).getManagerRequest(addr1.address);
+
+        await expect(res).to.be.reverted;
+    });
+
+    it("Only admin should be able to approve manager request", async function () {
+        const { productHistoryContract, addr1 } = await loadFixture(deployProductHistoryFixture);
+
+        const res = productHistoryContract.connect(addr1).approveManagerRequest(addr1.address);
+
+        await expect(res).to.be.reverted;
+    });
+
+    it("Only admin should be able to deny manager request", async function () {
+        const { productHistoryContract, addr1 } = await loadFixture(deployProductHistoryFixture);
+
+        const res = productHistoryContract.connect(addr1).denyManagerRequest(addr1.address);
+
+        await expect(res).to.be.reverted;
     });
 });

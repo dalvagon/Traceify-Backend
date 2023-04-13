@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.18;
 
@@ -28,6 +28,13 @@ contract ProductHistory is Roles {
             products[barcode].informationHash == 0,
             "Product with this barcode already exists"
         );
+
+        for (uint256 i = 0; i < parentBarcodes.length; i++) {
+            require(
+                products[parentBarcodes[i]].informationHash != 0,
+                "Parent product with this barcode does not exist"
+            );
+        }
 
         Product memory product = Product({
             manager: msg.sender,
