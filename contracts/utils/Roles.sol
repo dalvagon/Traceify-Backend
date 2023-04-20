@@ -8,24 +8,17 @@ contract Roles is AccessControl {
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
     struct ManagerRequest {
         uint256 timestamp;
-        string name;
-        string email;
-        string company;
-        string purpose;
+        bytes32 ipfsRequestHash;
+        bool approved;
     }
-    address[] public managerRequestAddresses;
     mapping(address => ManagerRequest) public managerRequests;
+    address[] public managerRequestAddresses;
 
     constructor() {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function submitManagerRequest(
-        string calldata name,
-        string calldata email,
-        string calldata company,
-        string calldata purpose
-    ) external {
+    function submitManagerRequest(bytes32 ipfsRequestHash) external {
         require(
             managerRequests[msg.sender].timestamp == 0,
             "Manager request already submitted"
@@ -33,14 +26,12 @@ contract Roles is AccessControl {
 
         ManagerRequest memory managerRequest = ManagerRequest({
             timestamp: block.timestamp,
-            name: name,
-            email: email,
-            company: company,
-            purpose: purpose
+            ipfsRequestHash: ipfsRequestHash,
+            approved: false
         });
 
-        managerRequestAddresses.push(msg.sender);
         managerRequests[msg.sender] = managerRequest;
+        managerRequestAddresses.push(msg.sender);
     }
 
     function approveManagerRequest(
@@ -57,7 +48,7 @@ contract Roles is AccessControl {
 
         _addManager(account);
 
-        delete managerRequests[account];
+        managerRequests[account].approved = true;
     }
 
     function denyManagerRequest(
@@ -66,6 +57,10 @@ contract Roles is AccessControl {
         require(
             managerRequests[account].timestamp != 0,
             "Manager request does not exist"
+        );
+        require(
+            managerRequests[account].approved == false,
+            "Manager request already approved"
         );
 
         delete managerRequests[account];
@@ -77,7 +72,41 @@ contract Roles is AccessControl {
         onlyRole(DEFAULT_ADMIN_ROLE)
         returns (address[] memory)
     {
-        return managerRequestAddresses;
+        uint256 length = getNumberOfUnapprovedManagerRequests();
+        address[] memory addresses = new address[](length);
+        uint256 index = 0;
+
+        for (uint256 i = 0; i < managerRequestAddresses.length; i++) {
+            if (
+                managerRequests[managerRequestAddresses[i]].approved == false &&
+                managerRequests[managerRequestAddresses[i]].timestamp != 0
+            ) {
+                addresses[index] = managerRequestAddresses[i];
+                index++;
+            }
+        }
+
+        return addresses;
+    }
+
+    function getApprovedManagerRequestsAddresses()
+        external
+        view
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        returns (address[] memory)
+    {
+        uint256 length = getNumberOfApprovedManagerRequests();
+        address[] memory addresses = new address[](length);
+        uint256 index = 0;
+
+        for (uint256 i = 0; i < managerRequestAddresses.length; i++) {
+            if (managerRequests[managerRequestAddresses[i]].approved == true) {
+                addresses[index] = managerRequestAddresses[i];
+                index++;
+            }
+        }
+
+        return addresses;
     }
 
     function getManagerRequest(
@@ -86,19 +115,51 @@ contract Roles is AccessControl {
         external
         view
         onlyRole(DEFAULT_ADMIN_ROLE)
-        returns (string memory, string memory, string memory, string memory)
+        returns (address, bytes32, uint256)
     {
         return (
-            managerRequests[account].name,
-            managerRequests[account].email,
-            managerRequests[account].company,
-            managerRequests[account].purpose
+            account,
+            managerRequests[account].ipfsRequestHash,
+            managerRequests[account].timestamp
         );
     }
 
-    function _addManager(
-        address account
-    ) internal onlyRole(DEFAULT_ADMIN_ROLE) {
+    function getNumberOfApprovedManagerRequests()
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 length = 0;
+
+        for (uint256 i = 0; i < managerRequestAddresses.length; i++) {
+            if (managerRequests[managerRequestAddresses[i]].approved == true) {
+                length++;
+            }
+        }
+
+        return length;
+    }
+
+    function getNumberOfUnapprovedManagerRequests()
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 length = 0;
+
+        for (uint256 i = 0; i < managerRequestAddresses.length; i++) {
+            if (
+                managerRequests[managerRequestAddresses[i]].approved == false &&
+                managerRequests[managerRequestAddresses[i]].timestamp != 0
+            ) {
+                length++;
+            }
+        }
+
+        return length;
+    }
+
+    function _addManager(address account) internal {
         grantRole(MANAGER_ROLE, account);
     }
 }
