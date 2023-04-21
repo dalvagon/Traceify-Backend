@@ -13,70 +13,120 @@ contract ProductHistory is Roles {
     struct Product {
         address manager;
         bytes32 informationHash;
-        bytes32[] parentBarcodes;
+        bytes32[] parentUIDs;
     }
 
+    bytes32[] private productUIDs;
     mapping(bytes32 => Product) private products;
     mapping(bytes32 => Operation[]) operations;
 
     function addProduct(
-        bytes32 barcode,
+        bytes32 uid,
         bytes32 informationHash,
-        bytes32[] calldata parentBarcodes
+        bytes32[] calldata parentUIDs
     ) external onlyRole(MANAGER_ROLE) {
         require(
-            products[barcode].informationHash == 0,
-            "Product with this barcode already exists"
+            products[uid].informationHash == 0,
+            "Product with this uid already exists"
         );
 
-        for (uint256 i = 0; i < parentBarcodes.length; i++) {
+        for (uint256 i = 0; i < parentUIDs.length; i++) {
             require(
-                products[parentBarcodes[i]].informationHash != 0,
-                "Parent product with this barcode does not exist"
+                products[parentUIDs[i]].informationHash != 0,
+                "Parent product with this uid does not exist"
             );
         }
 
         Product memory product = Product({
             manager: msg.sender,
             informationHash: informationHash,
-            parentBarcodes: parentBarcodes
+            parentUIDs: parentUIDs
         });
 
-        products[barcode] = product;
+        products[uid] = product;
+        productUIDs.push(uid);
+    }
+
+    function getManagerProducts() external view returns (bytes32[] memory) {
+        bytes32[] memory managerProducts = new bytes32[](
+            getManagerProductCount()
+        );
+        uint256 managerProductsCount = 0;
+
+        for (uint256 i = 0; i < productUIDs.length; i++) {
+            if (products[productUIDs[i]].manager == msg.sender) {
+                managerProducts[managerProductsCount] = productUIDs[i];
+                managerProductsCount++;
+            }
+        }
+
+        return managerProducts;
+    }
+
+    function transferProductOwnership(
+        bytes32 uid,
+        address newManager
+    ) external onlyRole(MANAGER_ROLE) {
+        require(
+            products[uid].informationHash != 0,
+            "Product with this uid does not exist"
+        );
+        require(
+            products[uid].manager == msg.sender,
+            "User is not manager of this product"
+        );
+
+        products[uid].manager = newManager;
     }
 
     function updateProduct(
-        bytes32 barcode,
-        bytes32 informationHash,
-        uint256 timestamp
+        bytes32 uid,
+        bytes32 informationHash
     ) external onlyRole(MANAGER_ROLE) {
         require(
-            products[barcode].informationHash != 0,
-            "Product with this barcode does not exist"
+            products[uid].informationHash != 0,
+            "Product with this uid does not exist"
         );
         require(
-            products[barcode].manager == msg.sender,
+            products[uid].manager == msg.sender,
             "User is not manager of this product"
         );
 
         Operation memory operation = Operation({
             informationHash: informationHash,
-            timestamp: timestamp
+            timestamp: block.timestamp
         });
 
-        operations[barcode].push(operation);
+        operations[uid].push(operation);
     }
 
     function getProduct(
-        bytes32 barcode
+        bytes32 uid
     ) external view returns (bytes32, bytes32[] memory, Operation[] memory) {
-        Product memory product = products[barcode];
-        Operation[] memory productOperations = operations[barcode];
+        Product memory product = products[uid];
+        Operation[] memory productOperations = operations[uid];
 
-        return (
-            product.informationHash,
-            product.parentBarcodes,
-            productOperations
-        );
+        return (product.informationHash, product.parentUIDs, productOperations);
+    }
+
+    function generateProductUID()
+        external
+        view
+        onlyRole(MANAGER_ROLE)
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(block.timestamp, msg.sender));
+    }
+
+    function getManagerProductCount() internal view returns (uint256) {
+        uint256 managerProductCount = 0;
+
+        for (uint256 i = 0; i < productUIDs.length; i++) {
+            if (products[productUIDs[i]].manager == msg.sender) {
+                managerProductCount++;
+            }
+        }
+
+        return managerProductCount;
     }
 }
