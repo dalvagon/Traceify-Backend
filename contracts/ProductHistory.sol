@@ -14,6 +14,7 @@ contract ProductHistory is Roles {
         address manager;
         bytes32 informationHash;
         bytes32[] parentUIDs;
+        uint256 timestamp;
     }
 
     bytes32[] private productUIDs;
@@ -40,7 +41,8 @@ contract ProductHistory is Roles {
         Product memory product = Product({
             manager: msg.sender,
             informationHash: informationHash,
-            parentUIDs: parentUIDs
+            parentUIDs: parentUIDs,
+            timestamp: block.timestamp
         });
 
         products[uid] = product;
@@ -102,11 +104,20 @@ contract ProductHistory is Roles {
 
     function getProduct(
         bytes32 uid
-    ) external view returns (bytes32, bytes32[] memory, Operation[] memory) {
+    )
+        external
+        view
+        returns (bytes32, bytes32[] memory, Operation[] memory, uint256)
+    {
         Product memory product = products[uid];
         Operation[] memory productOperations = operations[uid];
 
-        return (product.informationHash, product.parentUIDs, productOperations);
+        return (
+            product.informationHash,
+            product.parentUIDs,
+            productOperations,
+            product.timestamp
+        );
     }
 
     function generateProductUID()

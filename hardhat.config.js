@@ -18,4 +18,7 @@ module.exports = {
 
 // npx hardhat run .\scripts\deploy.js --network sepolia
 
-// 0x0c893840683a6EF9168B142964C7914F32d950aB
+// 0x6A3cF1Ba1B8B44fd0715aa930de0058dE0198862
+
+
+// myth analyze ./contracts/ProductHistory.sol --solc-json solc.json
