@@ -6,13 +6,19 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract Roles is AccessControl {
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+
     struct ManagerRequest {
         uint256 timestamp;
         bytes32 ipfsRequestHash;
         bool approved;
     }
+
     mapping(address => ManagerRequest) public managerRequests;
     address[] public managerRequestAddresses;
+
+    event ManagerRequestSubmitted(address indexed account);
+    event ManagerRequestApproved(address indexed account);
+    event ManagerRequestDenied(address indexed account);
 
     constructor() {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -32,6 +38,8 @@ contract Roles is AccessControl {
 
         managerRequests[msg.sender] = managerRequest;
         managerRequestAddresses.push(msg.sender);
+
+        emit ManagerRequestSubmitted(msg.sender);
     }
 
     function approveManagerRequest(
@@ -39,7 +47,7 @@ contract Roles is AccessControl {
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(
             hasRole(MANAGER_ROLE, account) == false,
-            "Account is already a manager"
+            "Manager request already approved"
         );
         require(
             managerRequests[account].timestamp != 0,
@@ -47,23 +55,22 @@ contract Roles is AccessControl {
         );
 
         _addManager(account);
-
         managerRequests[account].approved = true;
+
+        emit ManagerRequestApproved(account);
     }
 
-    function denyManagerRequest(
+    function rejectManagerRequest(
         address account
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(
             managerRequests[account].timestamp != 0,
             "Manager request does not exist"
         );
-        require(
-            managerRequests[account].approved == false,
-            "Manager request already approved"
-        );
 
         delete managerRequests[account];
+
+        emit ManagerRequestDenied(account);
     }
 
     function getManagerRequestAddresses()
@@ -89,7 +96,7 @@ contract Roles is AccessControl {
         return addresses;
     }
 
-    function getApprovedManagerRequestsAddresses()
+    function getApprovedManagerRequestAddresses()
         external
         view
         onlyRole(DEFAULT_ADMIN_ROLE)
