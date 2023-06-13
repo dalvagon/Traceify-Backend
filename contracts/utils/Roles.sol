@@ -3,13 +3,14 @@
 pragma solidity ^0.8.18;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "./Utils.sol";
 
-contract Roles is AccessControl {
+contract Roles is AccessControl, Utils {
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     struct ManagerRequest {
         uint256 timestamp;
-        bytes32 ipfsRequestHash;
+        bytes32 ipfsHash;
         bool approved;
     }
 
@@ -24,15 +25,15 @@ contract Roles is AccessControl {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function submitManagerRequest(bytes32 ipfsRequestHash) external {
+    function submitManagerRequest(bytes32 ipfsHash) external {
         require(
-            managerRequests[msg.sender].timestamp == 0,
+            managerRequests[msg.sender].ipfsHash == 0,
             "Manager request already submitted"
         );
 
         ManagerRequest memory managerRequest = ManagerRequest({
             timestamp: block.timestamp,
-            ipfsRequestHash: ipfsRequestHash,
+            ipfsHash: ipfsHash,
             approved: false
         });
 
@@ -46,7 +47,7 @@ contract Roles is AccessControl {
         address account
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(
-            hasRole(MANAGER_ROLE, account) == false,
+            !hasRole(MANAGER_ROLE, account),
             "Manager request already approved"
         );
         require(
@@ -85,7 +86,7 @@ contract Roles is AccessControl {
 
         for (uint256 i = 0; i < managerRequestAddresses.length; i++) {
             if (
-                managerRequests[managerRequestAddresses[i]].approved == false &&
+                !managerRequests[managerRequestAddresses[i]].approved &&
                 managerRequests[managerRequestAddresses[i]].timestamp != 0
             ) {
                 addresses[index] = managerRequestAddresses[i];
@@ -107,7 +108,7 @@ contract Roles is AccessControl {
         uint256 index = 0;
 
         for (uint256 i = 0; i < managerRequestAddresses.length; i++) {
-            if (managerRequests[managerRequestAddresses[i]].approved == true) {
+            if (managerRequests[managerRequestAddresses[i]].approved) {
                 addresses[index] = managerRequestAddresses[i];
                 index++;
             }
@@ -126,7 +127,7 @@ contract Roles is AccessControl {
     {
         return (
             account,
-            managerRequests[account].ipfsRequestHash,
+            managerRequests[account].ipfsHash,
             managerRequests[account].timestamp
         );
     }
@@ -139,7 +140,7 @@ contract Roles is AccessControl {
         uint256 length = 0;
 
         for (uint256 i = 0; i < managerRequestAddresses.length; i++) {
-            if (managerRequests[managerRequestAddresses[i]].approved == true) {
+            if (managerRequests[managerRequestAddresses[i]].approved) {
                 length++;
             }
         }
@@ -156,7 +157,7 @@ contract Roles is AccessControl {
 
         for (uint256 i = 0; i < managerRequestAddresses.length; i++) {
             if (
-                managerRequests[managerRequestAddresses[i]].approved == false &&
+                !managerRequests[managerRequestAddresses[i]].approved &&
                 managerRequests[managerRequestAddresses[i]].timestamp != 0
             ) {
                 length++;

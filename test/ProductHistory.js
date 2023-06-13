@@ -384,6 +384,7 @@ describe("Product history productHistoryContract", function () {
         const { productHistoryContract, addr1, addr2 } = await loadFixture(deployProductHistoryFixture);
         const { informationHash } = getProduct();
         await addManager(addr1, productHistoryContract);
+        await addManager(addr2, productHistoryContract);
         const uid = await productHistoryContract.connect(addr1).generateProductUID();
         await productHistoryContract.connect(addr1).createProduct(uid, informationHash);
 
@@ -507,6 +508,24 @@ describe("Product history productHistoryContract", function () {
         const res = await productHistoryContract.connect(addr2).getProducts();
 
         expect(res).to.be.an("array").that.has.lengthOf(1).and.contains(uid1);
+    });
+
+    it("A manager should only see his remaining products after renouncing the role for one of them", async function () {
+        const { productHistoryContract, addr1, addr2 } = await loadFixture(deployProductHistoryFixture);
+        const { informationHash } = getProduct();
+        await addManager(addr1, productHistoryContract);
+        await addManager(addr2, productHistoryContract);
+        const uid1 = await productHistoryContract.connect(addr1).generateProductUID();
+        const uid2 = await productHistoryContract.connect(addr2).generateProductUID();
+        await productHistoryContract.connect(addr1).createProduct(uid1, informationHash);
+        await productHistoryContract.connect(addr1).createProduct(uid2, informationHash);
+        await productHistoryContract.connect(addr1).addManagerForProduct(uid1, addr2.address);
+        await productHistoryContract.connect(addr1).addManagerForProduct(uid2, addr2.address);
+        await productHistoryContract.connect(addr2).renounceRoleForProduct(uid1);
+
+        const res = await productHistoryContract.connect(addr2).getProducts();
+
+        expect(res).to.be.an("array").that.has.lengthOf(1).and.contains(uid2);
     });
 
     it("Only a manager should be able to see his products", async function () {

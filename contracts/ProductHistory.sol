@@ -30,7 +30,7 @@ contract ProductHistory is Roles {
         bytes32 uid,
         bytes32 ipfsHash
     ) external onlyRole(MANAGER_ROLE) {
-        require(products[uid].timestamp == 0, "Product already exists");
+        require(products[uid].ipfsHash == 0, "Product already exists");
 
         Product memory product = Product({
             uid: uid,
@@ -48,7 +48,7 @@ contract ProductHistory is Roles {
         bytes32 uid,
         bytes32 ipfsHash
     ) external onlyRole(MANAGER_ROLE) {
-        require(products[uid].timestamp != 0, "Product does not exist");
+        require(products[uid].ipfsHash != 0, "Product does not exist");
         require(
             _isManagerForProduct(uid, msg.sender),
             "Not a manager of this product"
@@ -69,7 +69,7 @@ contract ProductHistory is Roles {
         bytes32 uid,
         address account
     ) external onlyRole(MANAGER_ROLE) {
-        require(products[uid].timestamp != 0, "Product does not exist");
+        require(products[uid].ipfsHash != 0, "Product does not exist");
         require(!_isManagerForProduct(uid, account), "Already a manager");
         require(hasRole(MANAGER_ROLE, account), "The account is not a manager");
         require(
@@ -85,7 +85,7 @@ contract ProductHistory is Roles {
     function renounceRoleForProduct(
         bytes32 uid
     ) external onlyRole(MANAGER_ROLE) {
-        require(products[uid].timestamp != 0, "Product does not exist");
+        require(products[uid].ipfsHash != 0, "Product does not exist");
         require(
             _isManagerForProduct(uid, msg.sender),
             "Not a manager of this product"
@@ -93,7 +93,12 @@ contract ProductHistory is Roles {
 
         for (uint256 i = 0; i < productsForManager[msg.sender].length; i++) {
             if (productsForManager[msg.sender][i] == uid) {
-                delete productsForManager[msg.sender][i];
+                _removeFromArray(
+                    productsForManager[msg.sender],
+                    productsForManager[msg.sender][i]
+                );
+
+                break;
             }
         }
 
@@ -101,7 +106,7 @@ contract ProductHistory is Roles {
     }
 
     function getProduct(bytes32 uid) external view returns (Product memory) {
-        require(products[uid].timestamp != 0, "Product does not exist");
+        require(products[uid].ipfsHash != 0, "Product does not exist");
 
         return products[uid];
     }
@@ -109,7 +114,7 @@ contract ProductHistory is Roles {
     function getOperations(
         bytes32 uid
     ) external view returns (Operation[] memory) {
-        require(products[uid].timestamp != 0, "Product does not exist");
+        require(products[uid].ipfsHash != 0, "Product does not exist");
 
         return operations[uid];
     }
