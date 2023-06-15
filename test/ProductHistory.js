@@ -107,7 +107,7 @@ describe("Product history productHistoryContract", function () {
 
         const res = productHistoryContract.approveManagerRequest(addr1.address);
 
-        await expect(res).to.be.revertedWith("Manager request does not exist");
+        await expect(res).to.be.revertedWith("This user has not submitted a request");
     });
 
     it("Admin should not be able to reject a manager request that doesn't exist", async function () {
@@ -115,7 +115,7 @@ describe("Product history productHistoryContract", function () {
 
         const res = productHistoryContract.rejectManagerRequest(addr1.address);
 
-        await expect(res).to.be.revertedWith("Manager request does not exist");
+        await expect(res).to.be.revertedWith("This user has not submitted a request");
     });
 
     it("Admin should be able to approve manager requests", async function () {
@@ -273,7 +273,7 @@ describe("Product history productHistoryContract", function () {
 
         const res = productHistoryContract.connect(addr1).addOperation(getRandomHash(), productOperations[0].informationHash);
 
-        await expect(res).to.be.revertedWith("Product does not exist");
+        await expect(res).to.be.revertedWith("Product with this UID does not exist");
     });
 
     it("Only the managers of the product should be able to add new product operations", async function () {
@@ -286,7 +286,7 @@ describe("Product history productHistoryContract", function () {
 
         const res = productHistoryContract.connect(addr2).addOperation(uid, productOperations[0].informationHash);
 
-        await expect(res).to.be.revertedWith("Not a manager of this product");
+        await expect(res).to.be.revertedWith("You are not a manager of this product");
     });
 
     it("Product should be able to have multiple managers", async function () {
@@ -310,7 +310,7 @@ describe("Product history productHistoryContract", function () {
 
         const res = productHistoryContract.connect(addr1).addManagerForProduct(getRandomHash(), addr2.address);
 
-        await expect(res).to.be.revertedWith("Product does not exist");
+        await expect(res).to.be.revertedWith("Product with this UID does not exist");
     });
 
     it("Only a manager should be able to add new manager to the product", async function () {
@@ -336,7 +336,7 @@ describe("Product history productHistoryContract", function () {
 
         const res = productHistoryContract.connect(addr1).addManagerForProduct(uid, addr2.address);
 
-        await expect(res).to.be.revertedWith("Already a manager");
+        await expect(res).to.be.revertedWith("You are already a manager of this product");
     });
 
     it("A manager should only be able to add a user that is a manager", async function () {
@@ -363,7 +363,7 @@ describe("Product history productHistoryContract", function () {
 
         const res = productHistoryContract.connect(addr2).addManagerForProduct(uid, addr3.address);
 
-        await expect(res).to.be.revertedWith("Not a manager of this product");
+        await expect(res).to.be.revertedWith("You are not a manager of this product");
     });
 
     it("Only manager should be able to renounce the role for a product", async function () {
@@ -399,7 +399,7 @@ describe("Product history productHistoryContract", function () {
 
         const res = productHistoryContract.connect(addr1).renounceRoleForProduct(getRandomHash());
 
-        await expect(res).to.be.revertedWith("Product does not exist");
+        await expect(res).to.be.revertedWith("Product with this UID does not exist");
     });
 
     it("Only a manager that owns a product can renounce the role", async function () {
@@ -412,7 +412,7 @@ describe("Product history productHistoryContract", function () {
 
         const res = productHistoryContract.connect(addr2).renounceRoleForProduct(uid);
 
-        await expect(res).to.be.revertedWith("Not a manager of this product");
+        await expect(res).to.be.revertedWith("You are not a manager of this product");
     });
 
     it("Manager should be able to renounce the role over a product", async function () {
@@ -462,7 +462,7 @@ describe("Product history productHistoryContract", function () {
 
         const res = productHistoryContract.connect(addr1).getProduct(getRandomHash());
 
-        await expect(res).to.be.revertedWith("Product does not exist");
+        await expect(res).to.be.revertedWith("Product with this UID does not exist");
     });
 
     it("Should be able to see a product history", async function () {
@@ -491,7 +491,7 @@ describe("Product history productHistoryContract", function () {
 
         const res = productHistoryContract.connect(addr1).getOperations(getRandomHash());
 
-        await expect(res).to.be.revertedWith("Product does not exist");
+        await expect(res).to.be.revertedWith("Product with this UID does not exist");
     });
 
     it("A manager should be able to see his products", async function () {

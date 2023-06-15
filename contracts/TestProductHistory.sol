@@ -7,49 +7,75 @@ import "./utils/Roles.sol";
 contract ProductHistory is Roles {
     struct Product {
         bytes32 uid;
-        bytes32 ipfsHash;
         uint256 timestamp;
+        string name;
+        string category;
+        string manufacturer;
+        string manufacturingDate;
+        string expiryDate;
+        string description;
+        bytes32[] parentUids;
     }
 
     struct Operation {
         bytes32 uid;
-        bytes32 ipfsHash;
         uint256 timestamp;
+        string name;
+        string category;
+        string date;
+        string description;
+        bytes32[] operationProducts;
     }
 
     mapping(bytes32 => Product) private products;
     mapping(bytes32 => Operation[]) private operations;
     mapping(address => bytes32[]) private productsForManager;
 
-    event ProductCreated(bytes32 uid, bytes32 ipfsHash, uint256 timestamp);
-    event OperationAdded(bytes32 uid, bytes32 ipfsHash, uint256 timestamp);
+    event ProductCreated(bytes32 uid, uint256 timestamp);
+    event OperationAdded(bytes32 uid, uint256 timestamp);
     event ManagerAdded(address account);
     event ManagerRemoved(address account);
 
     function createProduct(
         bytes32 uid,
-        bytes32 ipfsHash
+        string memory name,
+        string memory category,
+        string memory manufacturer,
+        string memory manufacturingDate,
+        string memory expiryDate,
+        string memory description,
+        bytes32[] memory parentUids
     ) external onlyRole(MANAGER_ROLE) {
-        require(products[uid].ipfsHash == 0, "Product already exists");
+        require(products[uid].timestamp == 0, "Product already exists");
 
         Product memory product = Product({
             uid: uid,
-            ipfsHash: ipfsHash,
-            timestamp: block.timestamp
+            timestamp: block.timestamp,
+            name: name,
+            category: category,
+            manufacturer: manufacturer,
+            manufacturingDate: manufacturingDate,
+            expiryDate: expiryDate,
+            description: description,
+            parentUids: parentUids
         });
 
         products[uid] = product;
         productsForManager[msg.sender].push(uid);
 
-        emit ProductCreated(uid, ipfsHash, block.timestamp);
+        emit ProductCreated(uid, block.timestamp);
     }
 
     function addOperation(
         bytes32 uid,
-        bytes32 ipfsHash
+        string memory name,
+        string memory category,
+        string memory date,
+        string memory description,
+        bytes32[] memory operationProducts
     ) external onlyRole(MANAGER_ROLE) {
         require(
-            products[uid].ipfsHash != 0,
+            products[uid].timestamp != 0,
             "Product with this UID does not exist"
         );
         require(
@@ -59,13 +85,17 @@ contract ProductHistory is Roles {
 
         Operation memory operation = Operation({
             uid: uid,
-            ipfsHash: ipfsHash,
-            timestamp: block.timestamp
+            timestamp: block.timestamp,
+            name: name,
+            category: category,
+            date: date,
+            description: description,
+            operationProducts: operationProducts
         });
 
         operations[uid].push(operation);
 
-        emit OperationAdded(uid, ipfsHash, block.timestamp);
+        emit OperationAdded(uid, block.timestamp);
     }
 
     function addManagerForProduct(
@@ -73,17 +103,16 @@ contract ProductHistory is Roles {
         address account
     ) external onlyRole(MANAGER_ROLE) {
         require(
-            products[uid].ipfsHash != 0,
+            products[uid].timestamp != 0,
             "Product with this UID does not exist"
         );
         require(
-            !_isManagerForProduct(uid, account),
-            "You are already a manager of this product"
-        );
-        require(hasRole(MANAGER_ROLE, account), "The account is not a manager");
-        require(
             _isManagerForProduct(uid, msg.sender),
             "You are not a manager of this product"
+        );
+        require(
+            !_isManagerForProduct(uid, account),
+            "This account is already a manager of this product"
         );
 
         productsForManager[account].push(uid);
@@ -95,7 +124,7 @@ contract ProductHistory is Roles {
         bytes32 uid
     ) external onlyRole(MANAGER_ROLE) {
         require(
-            products[uid].ipfsHash != 0,
+            products[uid].timestamp != 0,
             "Product with this UID does not exist"
         );
         require(
@@ -119,7 +148,7 @@ contract ProductHistory is Roles {
 
     function getProduct(bytes32 uid) external view returns (Product memory) {
         require(
-            products[uid].ipfsHash != 0,
+            products[uid].timestamp != 0,
             "Product with this UID does not exist"
         );
 
@@ -130,7 +159,7 @@ contract ProductHistory is Roles {
         bytes32 uid
     ) external view returns (Operation[] memory) {
         require(
-            products[uid].ipfsHash != 0,
+            products[uid].timestamp != 0,
             "Product with this UID does not exist"
         );
 

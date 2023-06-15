@@ -52,7 +52,7 @@ contract Roles is AccessControl, Utils {
         );
         require(
             managerRequests[account].timestamp != 0,
-            "Manager request does not exist"
+            "This user has not submitted a request"
         );
 
         _addManager(account);
@@ -66,7 +66,7 @@ contract Roles is AccessControl, Utils {
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(
             managerRequests[account].timestamp != 0,
-            "Manager request does not exist"
+            "This user has not submitted a request"
         );
 
         delete managerRequests[account];
